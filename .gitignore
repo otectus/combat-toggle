@@ -1,0 +1,25 @@
+# Gradle
+build/
+.gradle/
+gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.vscode/
+.idea/
+*.iml
+.eclipse/
+
+# Compiled output
+bin/
+out/
+
+# Runtime
+run/
+
+# Tool artifacts
+.blackbox/
+.blackboxcli/
+
+# OS
+.DS_Store
+Thumbs.db

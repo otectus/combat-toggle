@@ -1,0 +1,28 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+
+[[mods]]
+modId="combattoggle"
+version="1.0.0"
+displayName="Combat Toggle"
+description="A PvP mode toggle system with combat tagging and cooldowns"
+logoFile=""
+credits="Runecraft"
+authors="Runecraft"
+displayURL=""
+updateJSONURL=""
+
+[[dependencies.combattoggle]]
+modId="forge"
+mandatory=true
+versionRange="[47.3.0,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.combattoggle]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.20.1,1.21)"
+ordering="NONE"
+side="BOTH"
