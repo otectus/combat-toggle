@@ -185,14 +185,6 @@ src/main/resources/
 - ✅ Texture assets (peace.png, combat.png)
 - ✅ **Build successful** - JAR ready for deployment
 
-### 🧪 Testing Needed
-- [ ] In-game mod loading verification
-- [ ] HUD display at 120x27 pixels
-- [ ] Nameplate colors (RED/BLUE)
-- [ ] PvP-triggered cooldown behavior
-- [ ] All admin commands
-- [ ] Combat tag persistence
-
 ### 🔧 Optional Future Enhancements
 - Click-to-toggle HUD functionality
 - Sound effects for mode changes
@@ -238,49 +230,6 @@ The mod is ready to build with Gradle wrapper included.
 ```bash
 .\gradlew.bat runClient
 ```
-
-## Testing Checklist
-
-### Basic Functionality
-- [ ] Mod loads without crashes
-- [ ] Keybind (Caps Lock) toggles mode
-- [ ] HUD displays at 120x27 pixels (top center)
-- [ ] HUD shows correct icon (peace.png or combat.png)
-
-### Nameplate Colors
-- [ ] Combat mode → RED nameplate
-- [ ] Peace mode → BLUE nameplate
-- [ ] Colors visible in tab list
-- [ ] Colors update on toggle
-- [ ] Colors persist after relog
-
-### PvP System
-- [ ] PvP blocked in Peace mode
-- [ ] PvP works in Combat mode
-- [ ] Combat tagging applies after PvP (30s default)
-- [ ] Combat tag prevents Peace toggle (if configured)
-- [ ] Tag persists across logout/login
-
-### Cooldown System
-- [ ] Free toggling in safe zones (no recent PvP)
-- [ ] PvP triggers 10-minute cooldown
-- [ ] Cooldown blocks Peace mode toggle
-- [ ] Cooldown allows Combat mode toggle (if `cooldownAppliesToPeaceOnly = true`)
-- [ ] Clear messages about cooldown status
-- [ ] Cooldown persists across relog
-
-### Admin Commands
-- [ ] `/combattoggle get <player>` shows status
-- [ ] `/combattoggle set <player> <mode>` works
-- [ ] `/combattoggle resetcooldown <player>` clears cooldown
-- [ ] `/combattoggle tag <player>` applies tag
-- [ ] `/combattoggle untag <player>` removes tag
-- [ ] Bypass cooldown with `bypassCooldown` parameter
-
-### Configuration
-- [ ] Config file generates on first run
-- [ ] Config changes take effect
-- [ ] All new cooldown options work correctly
 
 ## Documentation
 
