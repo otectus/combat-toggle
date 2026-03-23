@@ -26,6 +26,9 @@ public final class CTConfig {
     public static final ForgeConfigSpec.ConfigValue<String> combatEmoji;
     public static final ForgeConfigSpec.ConfigValue<String> peaceEmoji;
     public static final ForgeConfigSpec.BooleanValue useNameplateColors;
+    public static final ForgeConfigSpec.BooleanValue useScoreboardTeams;
+    public static final ForgeConfigSpec.ConfigValue<String> combatTeamName;
+    public static final ForgeConfigSpec.ConfigValue<String> peaceTeamName;
 
     public static final ForgeConfigSpec.BooleanValue showHud;
 
@@ -89,6 +92,18 @@ public final class CTConfig {
         useNameplateColors = b
                 .comment("If true, uses scoreboard team colors (RED for Combat, BLUE for Peace)")
                 .define("useNameplateColors", true);
+
+        useScoreboardTeams = b
+                .comment("Use scoreboard teams for nameplate colors/prefixes. Disable to avoid conflicts with other mods.")
+                .define("useScoreboardTeams", true);
+
+        combatTeamName = b
+                .comment("Scoreboard team name for Combat mode players")
+                .define("combatTeamName", "ct_combat");
+
+        peaceTeamName = b
+                .comment("Scoreboard team name for Peace mode players")
+                .define("peaceTeamName", "ct_peace");
 
         b.pop();
 

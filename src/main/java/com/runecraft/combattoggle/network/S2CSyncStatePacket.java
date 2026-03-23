@@ -8,19 +8,19 @@ import java.util.function.Supplier;
 
 public final class S2CSyncStatePacket {
     public final boolean enabled;
-    public final long lastToggleMs;
-    public final long combatTagUntilMs;
+    public final long combatTagRemainingMs;
+    public final long cooldownRemainingMs;
 
-    public S2CSyncStatePacket(boolean enabled, long lastToggleMs, long combatTagUntilMs) {
+    public S2CSyncStatePacket(boolean enabled, long combatTagRemainingMs, long cooldownRemainingMs) {
         this.enabled = enabled;
-        this.lastToggleMs = lastToggleMs;
-        this.combatTagUntilMs = combatTagUntilMs;
+        this.combatTagRemainingMs = combatTagRemainingMs;
+        this.cooldownRemainingMs = cooldownRemainingMs;
     }
 
     public static void encode(S2CSyncStatePacket msg, FriendlyByteBuf buf) {
         buf.writeBoolean(msg.enabled);
-        buf.writeLong(msg.lastToggleMs);
-        buf.writeLong(msg.combatTagUntilMs);
+        buf.writeLong(msg.combatTagRemainingMs);
+        buf.writeLong(msg.cooldownRemainingMs);
     }
 
     public static S2CSyncStatePacket decode(FriendlyByteBuf buf) {
@@ -29,7 +29,7 @@ public final class S2CSyncStatePacket {
 
     public static void handle(S2CSyncStatePacket msg, Supplier<NetworkEvent.Context> ctx) {
         NetworkEvent.Context c = ctx.get();
-        c.enqueueWork(() -> ClientCombatState.update(msg.enabled, msg.lastToggleMs, msg.combatTagUntilMs));
+        c.enqueueWork(() -> ClientCombatState.update(msg.enabled, msg.combatTagRemainingMs, msg.cooldownRemainingMs));
         c.setPacketHandled(true);
     }
 }

@@ -14,8 +14,8 @@ import net.minecraft.world.scores.Scoreboard;
  * - Peace mode: BLUE nameplate with 🛡 prefix (configurable)
  */
 public final class TeamManager {
-    private static final String COMBAT_TEAM = "ct_combat";
-    private static final String PEACE_TEAM = "ct_peace";
+    private static String getCombatTeam() { return CTConfig.combatTeamName.get(); }
+    private static String getPeaceTeam() { return CTConfig.peaceTeamName.get(); }
 
     private TeamManager() {}
 
@@ -25,9 +25,11 @@ public final class TeamManager {
      * Applies emoji prefixes and colors based on configuration.
      */
     public static void ensureTeamsExist(Scoreboard scoreboard) {
-        PlayerTeam combat = scoreboard.getPlayerTeam(COMBAT_TEAM);
+        if (!CTConfig.useScoreboardTeams.get()) return;
+
+        PlayerTeam combat = scoreboard.getPlayerTeam(getCombatTeam());
         if (combat == null) {
-            combat = scoreboard.addPlayerTeam(COMBAT_TEAM);
+            combat = scoreboard.addPlayerTeam(getCombatTeam());
         }
         
         // Apply color if enabled
@@ -48,9 +50,9 @@ public final class TeamManager {
         combat.setAllowFriendlyFire(true);
         combat.setSeeFriendlyInvisibles(false);
 
-        PlayerTeam peace = scoreboard.getPlayerTeam(PEACE_TEAM);
+        PlayerTeam peace = scoreboard.getPlayerTeam(getPeaceTeam());
         if (peace == null) {
-            peace = scoreboard.addPlayerTeam(PEACE_TEAM);
+            peace = scoreboard.addPlayerTeam(getPeaceTeam());
         }
         
         // Apply color if enabled
@@ -80,6 +82,11 @@ public final class TeamManager {
      * @param combatEnabled true for combat team (red), false for peace team (blue)
      */
     public static void updatePlayerTeam(ServerPlayer player, boolean combatEnabled) {
+        if (!CTConfig.useScoreboardTeams.get()) {
+            removePlayerFromTeams(player);
+            return;
+        }
+
         Scoreboard scoreboard = player.getScoreboard();
         ensureTeamsExist(scoreboard);
 
@@ -87,12 +94,12 @@ public final class TeamManager {
 
         // Remove from CT teams only (avoid disrupting other mods' teams)
         PlayerTeam currentTeam = scoreboard.getPlayersTeam(playerName);
-        if (currentTeam != null && (COMBAT_TEAM.equals(currentTeam.getName()) || PEACE_TEAM.equals(currentTeam.getName()))) {
+        if (currentTeam != null && (getCombatTeam().equals(currentTeam.getName()) || getPeaceTeam().equals(currentTeam.getName()))) {
             scoreboard.removePlayerFromTeam(playerName, currentTeam);
         }
 
         // Assign to appropriate team
-        PlayerTeam targetTeam = scoreboard.getPlayerTeam(combatEnabled ? COMBAT_TEAM : PEACE_TEAM);
+        PlayerTeam targetTeam = scoreboard.getPlayerTeam(combatEnabled ? getCombatTeam() : getPeaceTeam());
         if (targetTeam != null) {
             scoreboard.addPlayerToTeam(playerName, targetTeam);
         }
@@ -106,7 +113,7 @@ public final class TeamManager {
         Scoreboard scoreboard = player.getScoreboard();
         String playerName = player.getScoreboardName();
         PlayerTeam currentTeam = scoreboard.getPlayersTeam(playerName);
-        if (currentTeam != null && (COMBAT_TEAM.equals(currentTeam.getName()) || PEACE_TEAM.equals(currentTeam.getName()))) {
+        if (currentTeam != null && (getCombatTeam().equals(currentTeam.getName()) || getPeaceTeam().equals(currentTeam.getName()))) {
             scoreboard.removePlayerFromTeam(playerName, currentTeam);
         }
     }

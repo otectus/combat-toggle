@@ -100,7 +100,7 @@ public final class CommandEvents {
         ctx.getSource().sendSuccess(() -> TextUtil.system("Set " + target.getScoreboardName() + " to " + (wantCombat ? "COMBAT" : "PEACE")), true);
         target.sendSystemMessage(TextUtil.system("[Combat Toggle] Admin set your mode to: " + (wantCombat ? "COMBAT" : "PEACE")));
 
-        PacketHandler.sendToPlayer(target, new S2CSyncStatePacket(d.enabled, d.lastToggleMs, d.combatTagUntilMs));
+        PacketHandler.sendToPlayer(target, new S2CSyncStatePacket(d.enabled, Math.max(0, d.combatTagUntilMs - now), d.getRemainingCooldown(now)));
         return 1;
     }
 
@@ -110,8 +110,9 @@ public final class CommandEvents {
         d.lastPvpMs = 0L;
         d.save(target);
 
+        long now = System.currentTimeMillis();
         ctx.getSource().sendSuccess(() -> TextUtil.system("Cooldown reset for " + target.getScoreboardName()), true);
-        PacketHandler.sendToPlayer(target, new S2CSyncStatePacket(d.enabled, d.lastToggleMs, d.combatTagUntilMs));
+        PacketHandler.sendToPlayer(target, new S2CSyncStatePacket(d.enabled, Math.max(0, d.combatTagUntilMs - now), d.getRemainingCooldown(now)));
         return 1;
     }
 
@@ -132,7 +133,7 @@ public final class CommandEvents {
         ctx.getSource().sendSuccess(() -> TextUtil.system("Tagged " + target.getScoreboardName() + " for " + seconds + "s"), true);
         target.sendSystemMessage(TextUtil.system("[Combat Toggle] You have been combat-tagged for " + seconds + "s"));
 
-        PacketHandler.sendToPlayer(target, new S2CSyncStatePacket(d.enabled, d.lastToggleMs, d.combatTagUntilMs));
+        PacketHandler.sendToPlayer(target, new S2CSyncStatePacket(d.enabled, Math.max(0, d.combatTagUntilMs - now), d.getRemainingCooldown(now)));
         return 1;
     }
 
@@ -141,16 +142,26 @@ public final class CommandEvents {
         d.combatTagUntilMs = 0L;
         d.save(target);
 
+        long now = System.currentTimeMillis();
         ctx.getSource().sendSuccess(() -> TextUtil.system("Untagged " + target.getScoreboardName()), true);
         target.sendSystemMessage(TextUtil.system("[Combat Toggle] Combat tag cleared"));
 
-        PacketHandler.sendToPlayer(target, new S2CSyncStatePacket(d.enabled, d.lastToggleMs, d.combatTagUntilMs));
+        PacketHandler.sendToPlayer(target, new S2CSyncStatePacket(d.enabled, Math.max(0, d.combatTagUntilMs - now), d.getRemainingCooldown(now)));
         return 1;
     }
 
     private static int reload(CommandContext<CommandSourceStack> ctx) {
-        // Forge auto reloads config on file change. This command is mostly ceremonial unless you implement manual reload hooks.
-        ctx.getSource().sendSuccess(() -> TextUtil.system("Config reload requested. If you edited the file, Forge should pick it up."), false);
+        var server = ctx.getSource().getServer();
+        long now = System.currentTimeMillis();
+        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+            CombatToggleData d = CombatToggleData.get(p);
+            TeamManager.updatePlayerTeam(p, d.enabled);
+            PacketHandler.sendToPlayer(p, new S2CSyncStatePacket(d.enabled, Math.max(0, d.combatTagUntilMs - now), d.getRemainingCooldown(now)));
+        }
+        ctx.getSource().sendSuccess(() -> TextUtil.system(
+            "[Combat Toggle] Scoreboard teams refreshed and state synced for all online players. " +
+            "Config values are auto-reloaded by Forge when the file changes."
+        ), false);
         return 1;
     }
 }

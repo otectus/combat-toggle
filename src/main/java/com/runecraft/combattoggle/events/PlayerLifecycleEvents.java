@@ -52,6 +52,6 @@ public final class PlayerLifecycleEvents {
         // Update scoreboard team for nameplate color
         TeamManager.updatePlayerTeam(p, d.enabled);
 
-        PacketHandler.sendToPlayer(p, new S2CSyncStatePacket(d.enabled, d.lastToggleMs, d.combatTagUntilMs));
+        PacketHandler.sendToPlayer(p, new S2CSyncStatePacket(d.enabled, Math.max(0, d.combatTagUntilMs - now), d.getRemainingCooldown(now)));
     }
 }

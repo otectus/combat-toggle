@@ -7,6 +7,7 @@ import com.runecraft.combattoggle.network.S2CSyncStatePacket;
 import com.runecraft.combattoggle.util.TeamManager;
 import com.runecraft.combattoggle.util.TextUtil;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -19,7 +20,23 @@ public final class CombatEnforcementEvents {
     @SubscribeEvent
     public static void onLivingHurt(LivingHurtEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer victim)) return;
-        if (!(event.getSource().getEntity() instanceof ServerPlayer attacker)) return;
+
+        // Resolve attacker: direct hit or projectile owner
+        ServerPlayer attacker;
+        var causingEntity = event.getSource().getEntity();
+        if (causingEntity instanceof ServerPlayer sp) {
+            attacker = sp;
+        } else {
+            // Fallback: resolve through the direct entity (the projectile itself)
+            var directEntity = event.getSource().getDirectEntity();
+            if (directEntity instanceof Projectile proj && proj.getOwner() instanceof ServerPlayer owner) {
+                attacker = owner;
+            } else {
+                return;
+            }
+        }
+
+        if (attacker == victim) return; // self-damage guard
 
         long now = System.currentTimeMillis();
 
@@ -34,9 +51,20 @@ public final class CombatEnforcementEvents {
             return;
         }
 
-        // PvP is allowed, apply combat tag to both
+        // PvP is allowed, apply combat tag to both (notify on first tag only)
+        boolean attackerWasTagged = a.isTagged(now);
+        boolean victimWasTagged = v.isTagged(now);
+
         a.applyCombatTag(now);
         v.applyCombatTag(now);
+
+        int tagSeconds = CTConfig.combatTagSeconds.get();
+        if (tagSeconds > 0) {
+            if (!attackerWasTagged)
+                attacker.sendSystemMessage(TextUtil.system("[Combat Toggle] Combat-tagged for " + tagSeconds + "s"));
+            if (!victimWasTagged)
+                victim.sendSystemMessage(TextUtil.system("[Combat Toggle] Combat-tagged for " + tagSeconds + "s"));
+        }
 
         // Track PvP activity for cooldown system
         if (CTConfig.cooldownTriggersOnPvp.get()) {
@@ -59,7 +87,7 @@ public final class CombatEnforcementEvents {
         v.save(victim);
 
         // Sync if forced changes happened
-        PacketHandler.sendToPlayer(attacker, new S2CSyncStatePacket(a.enabled, a.lastToggleMs, a.combatTagUntilMs));
-        PacketHandler.sendToPlayer(victim, new S2CSyncStatePacket(v.enabled, v.lastToggleMs, v.combatTagUntilMs));
+        PacketHandler.sendToPlayer(attacker, new S2CSyncStatePacket(a.enabled, Math.max(0, a.combatTagUntilMs - now), a.getRemainingCooldown(now)));
+        PacketHandler.sendToPlayer(victim, new S2CSyncStatePacket(v.enabled, Math.max(0, v.combatTagUntilMs - now), v.getRemainingCooldown(now)));
     }
 }

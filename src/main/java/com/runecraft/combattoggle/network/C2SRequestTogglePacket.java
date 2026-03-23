@@ -37,7 +37,7 @@ public final class C2SRequestTogglePacket {
                 // deny toggling to Peace while tagged
                 if (wantPeace) {
                     p.sendSystemMessage(TextUtil.system("[Combat Toggle] Cannot toggle to Peace while combat-tagged. Remaining: " + TextUtil.formatRemaining(d.combatTagUntilMs - now)));
-                    PacketHandler.sendToPlayer(p, new S2CSyncStatePacket(d.enabled, d.lastToggleMs, d.combatTagUntilMs));
+                    PacketHandler.sendToPlayer(p, new S2CSyncStatePacket(d.enabled, Math.max(0, d.combatTagUntilMs - now), d.getRemainingCooldown(now)));
                     return;
                 }
             }
@@ -47,7 +47,7 @@ public final class C2SRequestTogglePacket {
                 long remaining = d.getRemainingCooldown(now);
                 String reason = CTConfig.cooldownTriggersOnPvp.get() ? "recent PvP activity" : "recent toggle";
                 p.sendSystemMessage(TextUtil.system("[Combat Toggle] Cooldown active due to " + reason + ". Remaining: " + TextUtil.formatRemaining(remaining)));
-                PacketHandler.sendToPlayer(p, new S2CSyncStatePacket(d.enabled, d.lastToggleMs, d.combatTagUntilMs));
+                PacketHandler.sendToPlayer(p, new S2CSyncStatePacket(d.enabled, Math.max(0, d.combatTagUntilMs - now), d.getRemainingCooldown(now)));
                 return;
             }
 
@@ -64,19 +64,9 @@ public final class C2SRequestTogglePacket {
             TeamManager.updatePlayerTeam(p, d.enabled);
 
             String mode = d.enabled ? "COMBAT" : "PEACE";
-            
-            // Show cooldown info if applicable
-            String cooldownMsg = "";
-            if (CTConfig.cooldownTriggersOnToggle.get()) {
-                int cooldownSec = CTConfig.cooldownSeconds.get();
-                cooldownMsg = " Cooldown: " + TextUtil.formatRemaining(cooldownSec * 1000L);
-            } else if (CTConfig.cooldownTriggersOnPvp.get()) {
-                cooldownMsg = " (PvP will trigger cooldown)";
-            }
-            
-            p.sendSystemMessage(TextUtil.system("[Combat Toggle] Mode set to: " + mode + cooldownMsg));
+            p.sendSystemMessage(TextUtil.system("[Combat Toggle] Mode set to: " + mode));
 
-            PacketHandler.sendToPlayer(p, new S2CSyncStatePacket(d.enabled, d.lastToggleMs, d.combatTagUntilMs));
+            PacketHandler.sendToPlayer(p, new S2CSyncStatePacket(d.enabled, Math.max(0, d.combatTagUntilMs - now), d.getRemainingCooldown(now)));
         });
         c.setPacketHandled(true);
     }
