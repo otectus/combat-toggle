@@ -28,7 +28,6 @@ public final class CTConfig {
     public static final ForgeConfigSpec.BooleanValue useNameplateColors;
 
     public static final ForgeConfigSpec.BooleanValue showHud;
-    public static final ForgeConfigSpec.BooleanValue allowClientButtonClick;
 
     static {
         ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
@@ -95,7 +94,6 @@ public final class CTConfig {
 
         b.comment("Client-facing toggles that are still controlled by server config").push("client");
         showHud = b.define("showHud", true);
-        allowClientButtonClick = b.define("allowClientButtonClick", true);
         b.pop();
 
         SPEC = b.build();

@@ -15,8 +15,8 @@ A Minecraft Forge mod that adds a PvP toggle system with combat tagging, cooldow
 - **Peace/Combat Mode Toggle:** Players can switch between Peace mode (PvP disabled) and Combat mode (PvP enabled)
 - **Keybind:** Caps Lock key to toggle modes (configurable)
 - **HUD Display:** Visual indicator showing current mode (top center of screen, 120x27 pixels)
-- **Nameplate Indicators:** 
-  - Text/emoji prefixes: [PVP] for Combat mode, [PEACE] for Peace mode (fully customizable - see EMOJI_GUIDE.md)
+- **Nameplate Indicators:**
+  - Text/emoji prefixes: [PVP] for Combat mode, [PEACE] for Peace mode (fully customizable)
   - Color coding: RED nameplate for Combat mode, BLUE for Peace mode (vanilla scoreboard teams)
   - Both prefixes and colors can be independently enabled/disabled
 - **Combat Tagging:** Players are tagged for 30 seconds after PvP engagement
@@ -74,13 +74,12 @@ Configuration file: `config/combattoggle.toml`
 
 **Nameplate Visual Customization:**
 - `useEmojiPrefixes` (default: true) - Show text/emoji prefixes on nameplates
-- `combatEmoji` (default: "[PVP] ") - Text/emoji prefix for Combat mode players (see EMOJI_GUIDE.md for emoji options)
-- `peaceEmoji` (default: "[PEACE] ") - Text/emoji prefix for Peace mode players (see EMOJI_GUIDE.md for emoji options)
+- `combatEmoji` (default: "[PVP] ") - Text/emoji prefix for Combat mode players
+- `peaceEmoji` (default: "[PEACE] ") - Text/emoji prefix for Peace mode players
 - `useNameplateColors` (default: true) - Use scoreboard team colors (RED for Combat, BLUE for Peace)
 
 ### Client Settings (Server-Controlled)
 - `showHud` (default: true) - Display HUD overlay
-- `allowClientButtonClick` (default: true) - Allow clicking HUD to toggle (not yet implemented)
 
 ## Installation
 
@@ -130,7 +129,8 @@ src/main/java/com/runecraft/combattoggle/
 │   ├── ClientKeybinds.java            # Keybind registration
 │   └── CombatHudOverlay.java          # HUD rendering
 └── util/
-    └── TextUtil.java                  # Text formatting utilities
+    ├── TextUtil.java                  # Text formatting utilities
+    └── TeamManager.java               # Scoreboard team management
 
 src/main/resources/
 ├── META-INF/
@@ -140,58 +140,9 @@ src/main/resources/
     ├── lang/
     │   └── en_us.json                 # English translations
     └── textures/gui/
-        ├── peace.png                  # Peace mode icon (450x101)
-        └── combat.png                 # Combat mode icon (450x101)
+        ├── peace.png                  # Peace mode HUD icon (120x27)
+        └── combat.png                 # Combat mode HUD icon (120x27)
 ```
-
-## What's New in Latest Build
-
-### ✅ Build 7 - PvP-Triggered Cooldown System
-- **Smart Cooldown:** Cooldown now triggers on PvP activity, not just toggling
-- **Free Safe Zone Toggling:** Players can switch modes instantly when not fighting
-- **Configurable Behavior:** Three new config options for fine-tuned control
-- **Better UX:** Clear messages about why cooldown is active
-- **See:** `PVP_COOLDOWN_SYSTEM.md` for full documentation
-
-### ✅ Build 6 - Nameplate Color System
-- **Visual Status:** RED nameplates for Combat mode, BLUE for Peace mode
-- **Vanilla Teams:** Uses Minecraft's scoreboard system (no client hacks)
-- **Auto-Sync:** Updates on toggle, login, respawn, and admin commands
-- **See:** `NAMEPLATE_COLORS.md` for full documentation
-
-### ✅ Build 5 - HUD Rendering Fix
-- **Proper Scaling:** HUD icons now display at correct 120x27 pixel size
-- **Matrix Transformation:** Uses pose stack scaling for proper rendering
-- **Full Texture:** Shows complete icon, not just corner/enlarged portion
-
-### ✅ Build 4 - Startup Crash Fix
-- **Fixed mods.toml:** Corrected TOML format for Forge 1.20.1
-- **Proper Syntax:** Changed to `[[mods]]` array with required fields
-- **See:** `CRASH_FIX.md` for technical details
-
-## Current Status
-
-### ✅ Fully Implemented
-- ✅ All core Java classes
-- ✅ Server-side logic (config, data persistence, enforcement)
-- ✅ Client-side logic (state management, keybinds, HUD)
-- ✅ Network packet system
-- ✅ Admin command system
-- ✅ PvP-triggered cooldown system
-- ✅ Nameplate color system (scoreboard teams)
-- ✅ HUD rendering with proper scaling
-- ✅ Configuration files
-- ✅ Language localization
-- ✅ Texture assets (peace.png, combat.png)
-- ✅ **Build successful** - JAR ready for deployment
-
-### 🔧 Optional Future Enhancements
-- Click-to-toggle HUD functionality
-- Sound effects for mode changes
-- Particle effects for combat tagging
-- Gradual cooldown reduction
-- Safe zone detection
-- Per-world cooldowns
 
 ## Building the Mod
 
@@ -211,7 +162,7 @@ The mod is ready to build with Gradle wrapper included.
 
 **Output:**
 - Compiled JAR: `build/libs/combattoggle-1.0.0.jar`
-- Current size: ~47 KB
+- Current size: ~32 KB
 - Build time: ~25 seconds
 
 ### Development Environment
@@ -230,15 +181,6 @@ The mod is ready to build with Gradle wrapper included.
 ```bash
 .\gradlew.bat runClient
 ```
-
-## Documentation
-
-- **README.md** - This file, main documentation
-- **PVP_COOLDOWN_SYSTEM.md** - Complete guide to the PvP-triggered cooldown system
-- **NAMEPLATE_COLORS.md** - Documentation for the scoreboard team nameplate colors
-- **CRASH_FIX.md** - Technical details on fixes applied (mods.toml, HUD rendering)
-- **TODO.md** - Development progress tracker
-- **BUILD_SUMMARY.md** - Build history and technical notes
 
 ## Known Issues
 

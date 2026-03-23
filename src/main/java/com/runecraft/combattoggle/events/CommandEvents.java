@@ -89,7 +89,9 @@ public final class CommandEvents {
         }
 
         d.enabled = wantCombat;
-        d.lastToggleMs = now;
+        if (CTConfig.cooldownTriggersOnToggle.get()) {
+            d.lastToggleMs = now;
+        }
         d.save(target);
 
         // Update scoreboard team for nameplate color
@@ -105,6 +107,7 @@ public final class CommandEvents {
     private static int resetCooldown(CommandContext<CommandSourceStack> ctx, ServerPlayer target) {
         CombatToggleData d = CombatToggleData.get(target);
         d.lastToggleMs = 0L;
+        d.lastPvpMs = 0L;
         d.save(target);
 
         ctx.getSource().sendSuccess(() -> TextUtil.system("Cooldown reset for " + target.getScoreboardName()), true);
