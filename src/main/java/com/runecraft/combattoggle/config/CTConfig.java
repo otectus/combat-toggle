@@ -6,8 +6,10 @@ import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.config.ModConfig;
 
 public final class CTConfig {
-    public static final ForgeConfigSpec SPEC;
+    public static final ForgeConfigSpec SERVER_SPEC;
+    public static final ForgeConfigSpec CLIENT_SPEC;
 
+    // Server config values
     public static final ForgeConfigSpec.IntValue cooldownSeconds;
     public static final ForgeConfigSpec.IntValue combatTagSeconds;
 
@@ -16,12 +18,10 @@ public final class CTConfig {
     public static final ForgeConfigSpec.BooleanValue allowToggleWhileTagged;
     public static final ForgeConfigSpec.BooleanValue allowAdminBypassCooldown;
 
-    // New PvP-triggered cooldown options
     public static final ForgeConfigSpec.BooleanValue cooldownTriggersOnToggle;
     public static final ForgeConfigSpec.BooleanValue cooldownTriggersOnPvp;
     public static final ForgeConfigSpec.BooleanValue cooldownAppliesToPeaceOnly;
 
-    // Nameplate emoji prefix options
     public static final ForgeConfigSpec.BooleanValue useEmojiPrefixes;
     public static final ForgeConfigSpec.ConfigValue<String> combatEmoji;
     public static final ForgeConfigSpec.ConfigValue<String> peaceEmoji;
@@ -30,91 +30,99 @@ public final class CTConfig {
     public static final ForgeConfigSpec.ConfigValue<String> combatTeamName;
     public static final ForgeConfigSpec.ConfigValue<String> peaceTeamName;
 
+    // Client config values
     public static final ForgeConfigSpec.BooleanValue showHud;
 
     static {
-        ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
+        // Server config (per-world)
+        ForgeConfigSpec.Builder sb = new ForgeConfigSpec.Builder();
 
-        b.comment("Combat Toggle server configuration").push("server");
+        sb.comment("Combat Toggle server configuration").push("server");
 
-        cooldownSeconds = b
+        cooldownSeconds = sb
                 .comment("Cooldown duration in seconds (default 600 = 10 minutes)")
                 .defineInRange("cooldownSeconds", 600, 0, 86400);
 
-        combatTagSeconds = b
+        combatTagSeconds = sb
                 .comment("Combat tag duration after PvP interaction in seconds (default 30)")
                 .defineInRange("combatTagSeconds", 30, 0, 3600);
 
-        requireBothCombatEnabled = b
+        requireBothCombatEnabled = sb
                 .comment("If true, PvP only works when BOTH attacker and victim are in Combat mode. If false, only attacker matters.")
                 .define("requireBothCombatEnabled", true);
 
-        forceCombatWhileTagged = b
+        forceCombatWhileTagged = sb
                 .comment("If true, players are forced into Combat mode while combat-tagged")
                 .define("forceCombatWhileTagged", true);
 
-        allowToggleWhileTagged = b
+        allowToggleWhileTagged = sb
                 .comment("If true, players can still toggle while tagged. If false, toggling to Peace is denied while tagged.")
                 .define("allowToggleWhileTagged", false);
 
-        allowAdminBypassCooldown = b
+        allowAdminBypassCooldown = sb
                 .comment("If true, admins can bypass cooldown via commands")
                 .define("allowAdminBypassCooldown", true);
 
-        cooldownTriggersOnToggle = b
+        cooldownTriggersOnToggle = sb
                 .comment("If true, cooldown starts when player toggles mode. If false, toggling is always instant (unless PvP-triggered cooldown is active)")
                 .define("cooldownTriggersOnToggle", false);
 
-        cooldownTriggersOnPvp = b
+        cooldownTriggersOnPvp = sb
                 .comment("If true, cooldown starts when player deals or receives PvP damage. Recommended: true")
                 .define("cooldownTriggersOnPvp", true);
 
-        cooldownAppliesToPeaceOnly = b
+        cooldownAppliesToPeaceOnly = sb
                 .comment("If true, cooldown only prevents toggling TO Peace mode (Combat->Peace blocked, Peace->Combat always allowed). If false, cooldown blocks both directions.")
                 .define("cooldownAppliesToPeaceOnly", true);
 
-        b.pop();
+        sb.pop();
 
-        b.comment("Nameplate visual customization").push("nameplate");
+        sb.comment("Nameplate visual customization").push("nameplate");
 
-        useEmojiPrefixes = b
+        useEmojiPrefixes = sb
                 .comment("If true, adds text/emoji prefixes to player nameplates")
                 .define("useEmojiPrefixes", true);
 
-        combatEmoji = b
-                .comment("Text/emoji prefix for Combat mode players (default: [PVP] with space). Use Unicode escapes for emojis: \\u2694 for crossed swords")
-                .define("combatEmoji", "[PVP] ");
+        combatEmoji = sb
+                .comment("Text/emoji prefix for Combat mode players. Only BMP Unicode (U+0000-U+FFFF) renders in Minecraft's font. Supplementary emoji (e.g. surrogate pairs) will show as garbled text.")
+                .define("combatEmoji", "\u2694 ");
 
-        peaceEmoji = b
-                .comment("Text/emoji prefix for Peace mode players (default: [PEACE] with space). Use Unicode escapes for emojis: \\uD83D\\uDEE1 for shield")
-                .define("peaceEmoji", "[PEACE] ");
+        peaceEmoji = sb
+                .comment("Text/emoji prefix for Peace mode players. Only BMP Unicode (U+0000-U+FFFF) renders in Minecraft's font. Supplementary emoji (e.g. surrogate pairs) will show as garbled text.")
+                .define("peaceEmoji", "\u2615 ");
 
-        useNameplateColors = b
+        useNameplateColors = sb
                 .comment("If true, uses scoreboard team colors (RED for Combat, BLUE for Peace)")
                 .define("useNameplateColors", true);
 
-        useScoreboardTeams = b
+        useScoreboardTeams = sb
                 .comment("Use scoreboard teams for nameplate colors/prefixes. Disable to avoid conflicts with other mods.")
                 .define("useScoreboardTeams", true);
 
-        combatTeamName = b
+        combatTeamName = sb
                 .comment("Scoreboard team name for Combat mode players")
                 .define("combatTeamName", "ct_combat");
 
-        peaceTeamName = b
+        peaceTeamName = sb
                 .comment("Scoreboard team name for Peace mode players")
                 .define("peaceTeamName", "ct_peace");
 
-        b.pop();
+        sb.pop();
 
-        b.comment("Client-facing toggles that are still controlled by server config").push("client");
-        showHud = b.define("showHud", true);
-        b.pop();
+        SERVER_SPEC = sb.build();
 
-        SPEC = b.build();
+        // Client config (per-client)
+        ForgeConfigSpec.Builder cb = new ForgeConfigSpec.Builder();
+        cb.comment("Combat Toggle client configuration").push("client");
+        showHud = cb.comment("Display the HUD mode indicator").define("showHud", true);
+        cb.pop();
+
+        CLIENT_SPEC = cb.build();
     }
 
     public static void register() {
-        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, SPEC, CombatToggle.MODID + ".toml");
+        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, SERVER_SPEC, CombatToggle.MODID + "-server.toml");
+        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, CLIENT_SPEC, CombatToggle.MODID + "-client.toml");
+        CombatToggle.LOGGER.info("Combat Toggle config registered (server + client)");
     }
 }

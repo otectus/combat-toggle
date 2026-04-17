@@ -3,6 +3,7 @@ package com.runecraft.combattoggle.client;
 import com.runecraft.combattoggle.CombatToggle;
 import com.runecraft.combattoggle.config.CTConfig;
 import com.runecraft.combattoggle.util.TextUtil;
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
@@ -33,8 +34,13 @@ public final class CombatHudOverlay {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
         if (mc.options.hideGui) return;
+        if (mc.screen != null) return;
 
         int x = (w / 2) - (WIDTH / 2);
+
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
 
         ResourceLocation texture = ClientCombatState.isEnabled() ? COMBAT_TEX : PEACE_TEX;
         g.blit(texture, x, Y, 0, 0, WIDTH, HEIGHT, WIDTH, HEIGHT);
@@ -56,5 +62,7 @@ public final class CombatHudOverlay {
             int yOff = (tagUntil > now) ? Y + HEIGHT + 14 : Y + HEIGHT + 2;
             g.drawString(mc.font, cdText, textX, yOff, 0xFFFFAA00, true);
         }
+
+        RenderSystem.disableBlend();
     }
 }

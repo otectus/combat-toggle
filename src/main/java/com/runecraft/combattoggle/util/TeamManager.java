@@ -1,5 +1,6 @@
 package com.runecraft.combattoggle.util;
 
+import com.runecraft.combattoggle.CombatToggle;
 import com.runecraft.combattoggle.config.CTConfig;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -11,7 +12,7 @@ import net.minecraft.world.scores.Scoreboard;
  * Manages scoreboard teams for visual Combat Toggle state indication.
  * Uses vanilla scoreboard teams to color player nameplates and add emoji prefixes:
  * - Combat mode: RED nameplate with ⚔ prefix (configurable)
- * - Peace mode: BLUE nameplate with 🛡 prefix (configurable)
+ * - Peace mode: BLUE nameplate with ☕ prefix (configurable)
  */
 public final class TeamManager {
     private static String getCombatTeam() { return CTConfig.combatTeamName.get(); }
@@ -26,6 +27,11 @@ public final class TeamManager {
      */
     public static void ensureTeamsExist(Scoreboard scoreboard) {
         if (!CTConfig.useScoreboardTeams.get()) return;
+
+        if (getCombatTeam().equals(getPeaceTeam())) {
+            CombatToggle.LOGGER.warn("Combat and peace team names are identical: '{}'. Scoreboard teams disabled to avoid confusion.", getCombatTeam());
+            return;
+        }
 
         PlayerTeam combat = scoreboard.getPlayerTeam(getCombatTeam());
         if (combat == null) {
@@ -87,6 +93,10 @@ public final class TeamManager {
             return;
         }
 
+        if (getCombatTeam().equals(getPeaceTeam())) {
+            return;
+        }
+
         Scoreboard scoreboard = player.getScoreboard();
         ensureTeamsExist(scoreboard);
 
@@ -99,9 +109,11 @@ public final class TeamManager {
         }
 
         // Assign to appropriate team
-        PlayerTeam targetTeam = scoreboard.getPlayerTeam(combatEnabled ? getCombatTeam() : getPeaceTeam());
+        String targetTeamName = combatEnabled ? getCombatTeam() : getPeaceTeam();
+        PlayerTeam targetTeam = scoreboard.getPlayerTeam(targetTeamName);
         if (targetTeam != null) {
             scoreboard.addPlayerToTeam(playerName, targetTeam);
+            CombatToggle.LOGGER.debug("Assigned {} to team {}", playerName, targetTeamName);
         }
     }
 

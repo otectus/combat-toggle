@@ -1,5 +1,40 @@
 # Changelog
 
+## 1.1.5
+
+### Bug Fixes
+- **Ghost-tagged players after relog.** If a player logged out while combat-tagged and logged back in within the tag window, the tick handler's in-memory tracking set was not repopulated — the NBT tag persisted (toggle restrictions still applied) but the `tag_expired` chat notification never fired. `PlayerLifecycleEvents.syncAndEnforce` now re-registers tagged players with the tick handler on login and respawn.
+- **`/combattoggle reload` left scoreboard team formatting stale.** Forge auto-reloads `combattoggle-server.toml` on file change, but edits to `combatEmoji`, `peaceEmoji`, `useNameplateColors`, or the team names only took effect after a server restart. The command now calls `TeamManager.ensureTeamsExist` before resyncing players, so color/prefix edits apply immediately.
+- **Rate-limited toggle requests were silently dropped.** Mashing the toggle keybind caused the second-and-subsequent packets to drop server-side with no chat feedback and no state resync. Rate-limit drops now return the current state (keeping the HUD in sync) and emit a throttled `combattoggle.msg.toggle_rate_limited` hint.
+- **Projectile PvP bypass — hardened attacker resolution.** Attacker lookup for projectile damage now also falls through `event.getSource().getDirectEntity()` to cover cases where `getEntity()` is null (owner logged out, despawned chunk, etc.).
+- **Zero-second `/combattoggle tag` is now rejected** with a hint to use `/combattoggle untag` instead of silently creating an already-expired tag.
+- **Team-name collision detection.** If `combatTeamName` equals `peaceTeamName`, scoreboard team logic is disabled with a warning instead of producing identical-colored nameplates.
+- **`PlayerEvent.Clone` persistent-data copy narrowed** to only the mod's own `combat_toggle` compound, so other mods' persistent data is untouched across death/respawn.
+
+### New Features
+- **`/combattoggle status` command** — available to all players (no OP required). Shows current mode, active combat tag remaining, and cooldown remaining.
+- **Tag expiration notifications.** New `CombatTagTickHandler` emits `combattoggle.msg.tag_expired` when a player's tag elapses, so players know when combat logging penalties (if configured by external tooling) no longer apply.
+- **Toggle rate limiting.** Server rejects toggle requests arriving within 500ms of the previous one, preventing state churn from held keys or misbehaving clients.
+- **Throttled PvP-blocked feedback.** Attackers who hit a peace-mode target now see a chat message explaining why the hit was cancelled (throttled to once per 5 seconds per attacker to avoid spam).
+- **Public API (`com.runecraft.combattoggle.api.CombatToggleAPI`).** Stable server-side accessors for `isInCombatMode`, `isInPeaceMode`, `isCombatTagged`, `getCombatTagRemainingMs`, `isPvpAllowed`, `isCooldownActive`, `getCooldownRemainingMs`. Other mods can integrate without touching internals.
+- **Comprehensive structured logging.** DEBUG/INFO events for PvP decisions, toggle requests, command invocations, team assignments, and lifecycle events — pipe through to SLF4J like any other mod.
+- **Accurate cooldown denial messages.** `/combattoggle status` and the toggle denial chat text now report the actual cooldown source (PvP activity vs. recent toggle) instead of always saying "PvP activity". Backed by the new `CombatToggleData.CooldownState` record so both checks share one calculation path.
+
+### Improvements
+- **Peace and Combat HUD textures refined.** Repainted the Peace (shield + leaves) and Combat (crossed swords) 51×19 GUI icons with cleaner bevels, higher-contrast fills, and crisper pixel-art detail. File size grew from ~500B to ~4KB per icon; the visual change is visible at all GUI scales.
+- **Default toggle keybind switched from Caps Lock to V.** Caps Lock was a poor default — it remains toggled on after the game releases the key, interfering with other client software. V is free on the vanilla key map. Existing players with a custom binding are unaffected.
+- **Full translation key migration.** Every player-facing message now routes through `combattoggle.*` translation keys in `en_us.json`. Ready for community translations without code edits.
+- **Config split into SERVER and CLIENT specs.** `SPEC` → `SERVER_SPEC` + `CLIENT_SPEC`, registered as their own files (`combattoggle-server.toml` / `combattoggle-client.toml`). Server-side options (cooldowns, teams, enforcement) no longer leak into single-player client configs, and `showHud` is properly per-client.
+- **Conditional S2C state sync.** PvP events only emit a sync packet when the attacker's or victim's state actually changed, cutting needless client chatter in PvE-heavy scenarios.
+- **`updatePlayerTeam` now only disturbs Combat Toggle teams** — if another mod has placed the player in its own scoreboard team, that assignment is preserved.
+- **Encapsulated `CombatToggleData` fields.** Public mutable fields (`.enabled`, `.lastToggleMs`, `.combatTagUntilMs`, `.lastPvpMs`) replaced with getters/setters. Safer for future internal changes.
+- **README rewritten** to match actual feature set, v1.1.x command surface, and the V keybind default.
+
+### Internals
+- New `CombatTagTickHandler` (server tick, phase END) drives tag expiration notifications.
+- New `CombatToggleData.CooldownState` record collapses three duplicate cooldown-math sites into one `resolveCooldown(now)` path.
+- Packet network protocol remains at v2 (no wire-format change since 1.1.4).
+
 ## 1.1.4
 
 ### Bug Fixes

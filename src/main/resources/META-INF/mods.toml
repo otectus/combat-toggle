@@ -4,7 +4,7 @@ license="GPL-3.0"
 
 [[mods]]
 modId="combattoggle"
-version="1.1.4"
+version="1.1.5"
 displayName="Combat Toggle"
 description="A PvP mode toggle system with combat tagging and cooldowns"
 logoFile=""

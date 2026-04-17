@@ -18,7 +18,7 @@ public final class ClientKeybinds {
 
     @SubscribeEvent
     public static void onRegisterKeys(RegisterKeyMappingsEvent event) {
-        TOGGLE = new KeyMapping("key.combattoggle.toggle", GLFW.GLFW_KEY_CAPS_LOCK, "key.categories.gameplay");
+        TOGGLE = new KeyMapping("key.combattoggle.toggle", GLFW.GLFW_KEY_V, "key.categories.gameplay");
         event.register(TOGGLE);
     }
 }
