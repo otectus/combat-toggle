@@ -1,9 +1,12 @@
 package com.runecraft.combattoggle.config;
 
 import com.runecraft.combattoggle.CombatToggle;
+import com.runecraft.combattoggle.data.CooldownScope;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.config.ModConfig;
+
+import java.util.List;
 
 public final class CTConfig {
     public static final ForgeConfigSpec SERVER_SPEC;
@@ -20,7 +23,9 @@ public final class CTConfig {
 
     public static final ForgeConfigSpec.BooleanValue cooldownTriggersOnToggle;
     public static final ForgeConfigSpec.BooleanValue cooldownTriggersOnPvp;
-    public static final ForgeConfigSpec.BooleanValue cooldownAppliesToPeaceOnly;
+    public static final ForgeConfigSpec.EnumValue<CooldownScope> cooldownScope;
+
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> blockedDamageTypes;
 
     public static final ForgeConfigSpec.BooleanValue useEmojiPrefixes;
     public static final ForgeConfigSpec.ConfigValue<String> combatEmoji;
@@ -32,6 +37,12 @@ public final class CTConfig {
 
     // Client config values
     public static final ForgeConfigSpec.BooleanValue showHud;
+    public static final ForgeConfigSpec.BooleanValue showHudTimers;
+    public static final ForgeConfigSpec.EnumValue<HudAnchor> hudAnchor;
+    public static final ForgeConfigSpec.IntValue hudYOffset;
+
+    /** Horizontal HUD alignment, exposed in the client config so HUD-customisation users can move the indicator. */
+    public enum HudAnchor { LEFT, CENTER, RIGHT }
 
     static {
         // Server config (per-world)
@@ -71,9 +82,24 @@ public final class CTConfig {
                 .comment("If true, cooldown starts when player deals or receives PvP damage. Recommended: true")
                 .define("cooldownTriggersOnPvp", true);
 
-        cooldownAppliesToPeaceOnly = sb
-                .comment("If true, cooldown only prevents toggling TO Peace mode (Combat->Peace blocked, Peace->Combat always allowed). If false, cooldown blocks both directions.")
-                .define("cooldownAppliesToPeaceOnly", true);
+        cooldownScope = sb
+                .comment(
+                        "Which mode-transition directions an active cooldown blocks.",
+                        "  PEACE_ONLY (default): blocks Combat->Peace; Peace->Combat is always allowed (typical PvP-server config).",
+                        "  COMBAT_ONLY:          blocks Peace->Combat; Combat->Peace is always allowed (good for safe-zone-friendly servers).",
+                        "  BOTH:                 blocks both directions (locks the player into their current mode for the duration).",
+                        "  NONE:                 cooldown is computed and reported but never blocks a transition."
+                )
+                .defineEnum("cooldownScope", CooldownScope.PEACE_ONLY);
+
+        blockedDamageTypes = sb
+                .comment(
+                        "Damage-type resource locations always blocked between players, regardless of mode.",
+                        "Useful to forbid specific PvP vectors while leaving the rest enabled.",
+                        "Example: [\"minecraft:magic\", \"minecraft:indirect_magic\", \"minecraft:trident\"].",
+                        "Empty list (default) blocks nothing extra; use the mode toggle for blanket PvP control."
+                )
+                .defineList("blockedDamageTypes", List.of(), e -> e instanceof String);
 
         sb.pop();
 
@@ -115,6 +141,13 @@ public final class CTConfig {
         ForgeConfigSpec.Builder cb = new ForgeConfigSpec.Builder();
         cb.comment("Combat Toggle client configuration").push("client");
         showHud = cb.comment("Display the HUD mode indicator").define("showHud", true);
+        showHudTimers = cb.comment("Display the combat-tag and cooldown countdown timers below the HUD indicator").define("showHudTimers", true);
+        hudAnchor = cb
+                .comment("Horizontal alignment of the HUD indicator: LEFT, CENTER, or RIGHT.")
+                .defineEnum("hudAnchor", HudAnchor.CENTER);
+        hudYOffset = cb
+                .comment("Vertical offset of the HUD indicator from the top of the screen, in pixels.")
+                .defineInRange("hudYOffset", 6, -1024, 1024);
         cb.pop();
 
         CLIENT_SPEC = cb.build();

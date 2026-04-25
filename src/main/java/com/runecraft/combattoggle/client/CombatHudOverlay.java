@@ -4,6 +4,7 @@ import com.runecraft.combattoggle.CombatToggle;
 import com.runecraft.combattoggle.config.CTConfig;
 import com.runecraft.combattoggle.util.TextUtil;
 import com.mojang.blaze3d.systems.RenderSystem;
+import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
@@ -21,7 +22,13 @@ public final class CombatHudOverlay {
 
     private static final int WIDTH = 51;
     private static final int HEIGHT = 19;
-    private static final int Y = 6;
+
+    // Cache the formatted "M:SS" strings between renders. The HUD redraws every frame, often >60 FPS,
+    // but the displayed value only changes once per second; rebuilding the string each frame is wasted work.
+    private static long lastTagSecond = Long.MIN_VALUE;
+    private static String tagTextCached = "";
+    private static long lastCdSecond = Long.MIN_VALUE;
+    private static String cdTextCached = "";
 
     @SubscribeEvent
     public static void registerOverlays(RegisterGuiOverlaysEvent event) {
@@ -36,33 +43,56 @@ public final class CombatHudOverlay {
         if (mc.options.hideGui) return;
         if (mc.screen != null) return;
 
-        int x = (w / 2) - (WIDTH / 2);
+        int x = switch (CTConfig.hudAnchor.get()) {
+            case LEFT -> 2;
+            case RIGHT -> w - WIDTH - 2;
+            case CENTER -> (w / 2) - (WIDTH / 2);
+        };
+        int y = CTConfig.hudYOffset.get();
 
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
 
         ResourceLocation texture = ClientCombatState.isEnabled() ? COMBAT_TEX : PEACE_TEX;
-        g.blit(texture, x, Y, 0, 0, WIDTH, HEIGHT, WIDTH, HEIGHT);
+        g.blit(texture, x, y, 0, 0, WIDTH, HEIGHT, WIDTH, HEIGHT);
 
-        // Render combat tag timer
-        long now = System.currentTimeMillis();
-        long tagUntil = ClientCombatState.getCombatTagUntilMs();
-        if (tagUntil > now) {
-            String tagText = "Tag: " + TextUtil.formatRemaining(tagUntil - now);
-            int textX = (w / 2) - (mc.font.width(tagText) / 2);
-            g.drawString(mc.font, tagText, textX, Y + HEIGHT + 2, 0xFFFF5555, true);
-        }
-
-        // Render cooldown timer
-        long cdUntil = ClientCombatState.getCooldownUntilMs();
-        if (cdUntil > now) {
-            String cdText = "CD: " + TextUtil.formatRemaining(cdUntil - now);
-            int textX = (w / 2) - (mc.font.width(cdText) / 2);
-            int yOff = (tagUntil > now) ? Y + HEIGHT + 14 : Y + HEIGHT + 2;
-            g.drawString(mc.font, cdText, textX, yOff, 0xFFFFAA00, true);
+        if (CTConfig.showHudTimers.get()) {
+            renderTimers(mc, g, x, y);
         }
 
         RenderSystem.disableBlend();
+    }
+
+    private static void renderTimers(Minecraft mc, GuiGraphics g, int hudX, int hudY) {
+        long now = Util.getMillis();
+        long tagUntil = ClientCombatState.getCombatTagUntilMs();
+        long cdUntil = ClientCombatState.getCooldownUntilMs();
+
+        boolean tagActive = tagUntil > now;
+        boolean cdActive = cdUntil > now;
+
+        int textCenterX = hudX + (WIDTH / 2);
+
+        if (tagActive) {
+            long tagSec = (tagUntil - now + 999L) / 1000L;
+            if (tagSec != lastTagSecond) {
+                lastTagSecond = tagSec;
+                tagTextCached = "Tag: " + TextUtil.formatRemaining(tagSec * 1000L);
+            }
+            int tx = textCenterX - (mc.font.width(tagTextCached) / 2);
+            g.drawString(mc.font, tagTextCached, tx, hudY + HEIGHT + 2, 0xFFFF5555, true);
+        }
+
+        if (cdActive) {
+            long cdSec = (cdUntil - now + 999L) / 1000L;
+            if (cdSec != lastCdSecond) {
+                lastCdSecond = cdSec;
+                cdTextCached = "CD: " + TextUtil.formatRemaining(cdSec * 1000L);
+            }
+            int cx = textCenterX - (mc.font.width(cdTextCached) / 2);
+            int cy = tagActive ? hudY + HEIGHT + 14 : hudY + HEIGHT + 2;
+            g.drawString(mc.font, cdTextCached, cx, cy, 0xFFFFAA00, true);
+        }
     }
 }

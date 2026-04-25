@@ -3,6 +3,7 @@ package com.runecraft.combattoggle.client;
 import com.runecraft.combattoggle.network.C2SRequestTogglePacket;
 import com.runecraft.combattoggle.network.PacketHandler;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.event.TickEvent;
@@ -30,6 +31,9 @@ final class ClientKeybindTick {
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         if (ClientKeybinds.TOGGLE == null) return;
+        // Don't send toggle requests while the player is in chat, an inventory, an advancement screen,
+        // or any other GUI — vanilla pattern for keybinds that affect the world.
+        if (Minecraft.getInstance().screen != null) return;
 
         while (ClientKeybinds.TOGGLE.consumeClick()) {
             PacketHandler.sendToServer(new C2SRequestTogglePacket());

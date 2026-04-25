@@ -8,7 +8,8 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 public final class PacketHandler {
-    private static final String PROTOCOL = "2";
+    // v3 (1.2.1): S2CSyncStatePacket switched longs->varints (5 bytes vs 17). Wire-format break vs v2.
+    private static final String PROTOCOL = "3";
     private static int id = 0;
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(

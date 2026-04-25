@@ -7,18 +7,41 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.event.config.ModConfigEvent;
+
+import static com.runecraft.combattoggle.CombatToggle.MODID;
 
 /**
  * Manages scoreboard teams for visual Combat Toggle state indication.
  * Uses vanilla scoreboard teams to color player nameplates and add emoji prefixes:
  * - Combat mode: RED nameplate with ⚔ prefix (configurable)
  * - Peace mode: BLUE nameplate with ☕ prefix (configurable)
+ *
+ * <p>Team-name pair is snapshotted at config load and refreshed on reload (via
+ * {@link Cache#onConfigLoadOrReload(ModConfigEvent)}) so {@code updatePlayerTeam} avoids re-reading the
+ * config value on every login/respawn/toggle.
  */
 public final class TeamManager {
-    private static String getCombatTeam() { return CTConfig.combatTeamName.get(); }
-    private static String getPeaceTeam() { return CTConfig.peaceTeamName.get(); }
+    private static volatile String cachedCombatTeam = "ct_combat";
+    private static volatile String cachedPeaceTeam = "ct_peace";
+
+    private static String getCombatTeam() { return cachedCombatTeam; }
+    private static String getPeaceTeam() { return cachedPeaceTeam; }
 
     private TeamManager() {}
+
+    /** Snapshots the configured team-name pair when the config file is loaded or reloaded by Forge. */
+    @Mod.EventBusSubscriber(modid = MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
+    public static final class Cache {
+        @SubscribeEvent
+        public static void onConfigLoadOrReload(ModConfigEvent event) {
+            if (event.getConfig().getSpec() != CTConfig.SERVER_SPEC) return;
+            cachedCombatTeam = CTConfig.combatTeamName.get();
+            cachedPeaceTeam = CTConfig.peaceTeamName.get();
+        }
+    }
 
     /**
      * Ensures both Combat Toggle teams exist on the scoreboard.

@@ -1,10 +1,13 @@
 package com.runecraft.combattoggle.network;
 
 import com.runecraft.combattoggle.CombatToggle;
+import com.runecraft.combattoggle.api.events.CombatToggleStateChangeEvent;
 import com.runecraft.combattoggle.config.CTConfig;
 import com.runecraft.combattoggle.data.CombatToggleData;
+import com.runecraft.combattoggle.data.ToggleDirection;
 import com.runecraft.combattoggle.util.TeamManager;
 import com.runecraft.combattoggle.util.TextUtil;
+import net.minecraft.Util;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -41,62 +44,69 @@ public final class C2SRequestTogglePacket {
             ServerPlayer p = c.getSender();
             if (p == null) return;
 
-            // Rate limit toggle requests
-            long reqTime = System.currentTimeMillis();
+            // Rate limit toggle requests (in-memory only, monotonic ms is fine here)
+            long reqTimeMs = Util.getMillis();
             UUID playerId = p.getUUID();
             Long lastReq = lastRequestTime.get(playerId);
-            if (lastReq != null && (reqTime - lastReq) < MIN_REQUEST_INTERVAL_MS) {
+            long nowTick = p.serverLevel().getGameTime();
+            if (lastReq != null && (reqTimeMs - lastReq) < MIN_REQUEST_INTERVAL_MS) {
                 CombatToggle.LOGGER.debug("Toggle rate-limited for {}", p.getScoreboardName());
                 // Surface the drop: resync client state (keeps HUD in sync) and throttle a chat hint
                 CombatToggleData state = CombatToggleData.get(p);
-                PacketHandler.sendToPlayer(p, new S2CSyncStatePacket(state.isEnabled(), Math.max(0, state.getCombatTagUntilMs() - reqTime), state.getRemainingCooldown(reqTime)));
+                PacketHandler.sendToPlayer(p, new S2CSyncStatePacket(state.isEnabled(), state.getCombatTagRemainingMs(nowTick), state.getRemainingCooldownMs(nowTick)));
                 Long lastMsg = lastRateLimitMsgTime.get(playerId);
-                if (lastMsg == null || (reqTime - lastMsg) >= RATE_LIMIT_MSG_THROTTLE_MS) {
+                if (lastMsg == null || (reqTimeMs - lastMsg) >= RATE_LIMIT_MSG_THROTTLE_MS) {
                     p.sendSystemMessage(Component.translatable("combattoggle.msg.toggle_rate_limited"));
-                    lastRateLimitMsgTime.put(playerId, reqTime);
+                    lastRateLimitMsgTime.put(playerId, reqTimeMs);
                 }
                 return;
             }
-            lastRequestTime.put(playerId, reqTime);
+            lastRequestTime.put(playerId, reqTimeMs);
 
-            long now = reqTime;
             CombatToggleData d = CombatToggleData.get(p);
 
             // Determine what mode player wants to switch to
-            boolean wantPeace = d.isEnabled(); // If currently in Combat, they want Peace
-            CombatToggle.LOGGER.debug("Toggle request from {} (current={}, wantPeace={})", p.getScoreboardName(), d.isEnabled(), wantPeace);
+            ToggleDirection direction = ToggleDirection.nextFor(d.isEnabled());
+            if (CombatToggle.LOGGER.isDebugEnabled()) {
+                CombatToggle.LOGGER.debug("Toggle request from {} (current={}, direction={})", p.getScoreboardName(), d.isEnabled(), direction);
+            }
 
             // Combat tag restrictions
-            if (d.isTagged(now) && !CTConfig.allowToggleWhileTagged.get()) {
-                if (wantPeace) {
+            if (d.isTagged(nowTick) && !CTConfig.allowToggleWhileTagged.get()) {
+                if (direction == ToggleDirection.TO_PEACE) {
                     CombatToggle.LOGGER.debug("Toggle denied for {} -- combat tagged", p.getScoreboardName());
-                    p.sendSystemMessage(Component.translatable("combattoggle.msg.cannot_toggle_tagged", TextUtil.formatRemaining(d.getCombatTagUntilMs() - now)));
-                    PacketHandler.sendToPlayer(p, new S2CSyncStatePacket(d.isEnabled(), Math.max(0, d.getCombatTagUntilMs() - now), d.getRemainingCooldown(now)));
+                    p.sendSystemMessage(Component.translatable("combattoggle.msg.cannot_toggle_tagged", TextUtil.formatRemaining(d.getCombatTagRemainingMs(nowTick))));
+                    PacketHandler.sendToPlayer(p, new S2CSyncStatePacket(d.isEnabled(), d.getCombatTagRemainingMs(nowTick), d.getRemainingCooldownMs(nowTick)));
                     return;
                 }
             }
 
             // Check cooldown (PvP-triggered or toggle-triggered)
-            if (d.isCooldownActive(now, wantPeace)) {
-                long remaining = d.getRemainingCooldown(now);
-                CombatToggleData.CooldownSource source = d.getDominantCooldownSource(now);
+            if (d.isCooldownActiveForDirection(nowTick, direction)) {
+                long remainingMs = d.getRemainingCooldownMs(nowTick);
+                CombatToggleData.CooldownSource source = d.getDominantCooldownSource(nowTick);
                 Component reason = source == CombatToggleData.CooldownSource.PVP
                         ? Component.translatable("combattoggle.msg.cooldown_reason_pvp")
                         : Component.translatable("combattoggle.msg.cooldown_reason_toggle");
                 CombatToggle.LOGGER.debug("Toggle denied for {} -- cooldown active ({})", p.getScoreboardName(), source);
-                p.sendSystemMessage(Component.translatable("combattoggle.msg.cooldown_active", reason, TextUtil.formatRemaining(remaining)));
-                PacketHandler.sendToPlayer(p, new S2CSyncStatePacket(d.isEnabled(), Math.max(0, d.getCombatTagUntilMs() - now), d.getRemainingCooldown(now)));
+                p.sendSystemMessage(Component.translatable("combattoggle.msg.cooldown_active", reason, TextUtil.formatRemaining(remainingMs)));
+                PacketHandler.sendToPlayer(p, new S2CSyncStatePacket(d.isEnabled(), d.getCombatTagRemainingMs(nowTick), d.getRemainingCooldownMs(nowTick)));
                 return;
             }
 
-            d.setEnabled(!d.isEnabled());
-            
-            // Update lastToggleMs only if toggle-based cooldown is enabled
-            if (CTConfig.cooldownTriggersOnToggle.get()) {
-                d.setLastToggleMs(now);
+            boolean wantCombat = !d.isEnabled();
+            CombatToggleStateChangeEvent stateEvent = new CombatToggleStateChangeEvent(p, wantCombat,
+                    CombatToggleStateChangeEvent.Reason.PLAYER_TOGGLE);
+            if (net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(stateEvent)) {
+                // Another mod cancelled the transition. Resync the client so the HUD doesn't lock in a stale state.
+                PacketHandler.sendToPlayer(p, new S2CSyncStatePacket(d.isEnabled(), d.getCombatTagRemainingMs(nowTick), d.getRemainingCooldownMs(nowTick)));
+                return;
             }
-            
-            d.save(p);
+            d.setEnabled(wantCombat);
+
+            if (CTConfig.cooldownTriggersOnToggle.get()) {
+                d.setLastToggleTick(nowTick);
+            }
 
             // Update scoreboard team for nameplate color
             TeamManager.updatePlayerTeam(p, d.isEnabled());
@@ -107,7 +117,7 @@ public final class C2SRequestTogglePacket {
             CombatToggle.LOGGER.info("Player {} toggled to {}", p.getScoreboardName(), d.isEnabled() ? "COMBAT" : "PEACE");
             p.sendSystemMessage(Component.translatable("combattoggle.msg.mode_set", mode));
 
-            PacketHandler.sendToPlayer(p, new S2CSyncStatePacket(d.isEnabled(), Math.max(0, d.getCombatTagUntilMs() - now), d.getRemainingCooldown(now)));
+            PacketHandler.sendToPlayer(p, new S2CSyncStatePacket(d.isEnabled(), d.getCombatTagRemainingMs(nowTick), d.getRemainingCooldownMs(nowTick)));
         });
         c.setPacketHandled(true);
     }

@@ -1,7 +1,7 @@
 package com.runecraft.combattoggle.api;
 
-import com.runecraft.combattoggle.config.CTConfig;
 import com.runecraft.combattoggle.data.CombatToggleData;
+import com.runecraft.combattoggle.data.ToggleDirection;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
@@ -12,6 +12,10 @@ import net.minecraft.server.level.ServerPlayer;
 public final class CombatToggleAPI {
 
     private CombatToggleAPI() {}
+
+    private static long nowTick(ServerPlayer player) {
+        return player.serverLevel().getGameTime();
+    }
 
     /**
      * Returns true if the player is in Combat mode (PvP enabled).
@@ -31,16 +35,14 @@ public final class CombatToggleAPI {
      * Returns true if the player is currently combat-tagged.
      */
     public static boolean isCombatTagged(ServerPlayer player) {
-        return CombatToggleData.get(player).isTagged(System.currentTimeMillis());
+        return CombatToggleData.get(player).isTagged(nowTick(player));
     }
 
     /**
      * Returns the remaining combat tag duration in milliseconds, or 0 if not tagged.
      */
     public static long getCombatTagRemainingMs(ServerPlayer player) {
-        CombatToggleData d = CombatToggleData.get(player);
-        long now = System.currentTimeMillis();
-        return d.isTagged(now) ? d.getCombatTagUntilMs() - now : 0L;
+        return CombatToggleData.get(player).getCombatTagRemainingMs(nowTick(player));
     }
 
     /**
@@ -48,24 +50,30 @@ public final class CombatToggleAPI {
      * based on the current configuration and both players' modes.
      */
     public static boolean isPvpAllowed(ServerPlayer attacker, ServerPlayer victim) {
-        CombatToggleData a = CombatToggleData.get(attacker);
-        CombatToggleData v = CombatToggleData.get(victim);
-        boolean requireBoth = CTConfig.requireBothCombatEnabled.get();
-        return requireBoth ? (a.isEnabled() && v.isEnabled()) : a.isEnabled();
+        return CombatToggleData.isPvpAllowed(attacker, victim);
     }
 
     /**
-     * Returns true if the player has an active cooldown preventing mode change.
-     * @param wantPeace true if checking whether toggling to Peace is blocked
+     * Returns true if the player has an active cooldown that would block a transition in the given direction.
+     * Use {@link ToggleDirection#nextFor(boolean)} when you want to check the player's <em>next</em> possible toggle.
      */
+    public static boolean isCooldownActive(ServerPlayer player, ToggleDirection direction) {
+        return CombatToggleData.get(player).isCooldownActiveForDirection(nowTick(player), direction);
+    }
+
+    /**
+     * @deprecated since 1.2.1. Use {@link #isCooldownActive(ServerPlayer, ToggleDirection)}.
+     * The boolean parameter conflated direction with mode-name and led to caller bugs (see REVIEW 1.5).
+     */
+    @Deprecated(forRemoval = true)
     public static boolean isCooldownActive(ServerPlayer player, boolean wantPeace) {
-        return CombatToggleData.get(player).isCooldownActive(System.currentTimeMillis(), wantPeace);
+        return isCooldownActive(player, wantPeace ? ToggleDirection.TO_PEACE : ToggleDirection.TO_COMBAT);
     }
 
     /**
      * Returns the remaining cooldown in milliseconds, or 0 if no cooldown.
      */
     public static long getCooldownRemainingMs(ServerPlayer player) {
-        return CombatToggleData.get(player).getRemainingCooldown(System.currentTimeMillis());
+        return CombatToggleData.get(player).getRemainingCooldownMs(nowTick(player));
     }
 }
