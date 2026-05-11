@@ -1,199 +1,157 @@
-# Combat Toggle
+# Combat Toggle (1.19.2)
 
-A Minecraft Forge mod that lets players toggle between Peace and Combat mode, controlling who can engage in PvP. Includes combat tagging, configurable cooldowns, nameplate indicators, a public mod-integration API, and a full admin command suite.
+A Minecraft Forge mod that lets players toggle between Peace and Combat mode, controlling who can engage in PvP. Features combat tagging, configurable cooldowns, optional client-side HUD, and **server-installable** deployment — vanilla clients can join servers running this mod and use `/ct` to toggle without installing anything client-side.
 
 ## Requirements
 
-- Minecraft 1.20.1
-- Forge 47.3.0+
+- Minecraft 1.19.2
+- Forge 43.0.0+
 - Java 17
 
 ## Installation
 
-1. Install [Minecraft Forge](https://files.minecraftforge.net/) for 1.20.1
-2. Drop `combattoggle-1.2.1.jar` into your `mods/` folder
-3. Launch the game
+1. Install [Minecraft Forge](https://files.minecraftforge.net/) for 1.19.2.
+2. Drop `combattoggle-1.2.0.jar` into the `mods/` folder.
+3. Launch.
 
-> **Upgrading from 1.1.x?** The 1.2.x line is a breaking release. Network protocol moved from v2 to v3 (clients on 1.1.x will be cleanly rejected at handshake). Player state migrated to a Forge capability with tick-based timers — your players' Combat/Peace mode preserves across the upgrade, but in-flight tags and cooldowns from 1.1.x saves are dropped on first load. Config: `cooldownAppliesToPeaceOnly` was replaced with the `cooldownScope` enum (default `PEACE_ONLY` matches the old `true` setting).
+The mod is **server-side optional**: install it on your dedicated server and players can use `/ct` from a vanilla client. Players who also install it client-side get a HUD indicator and a `V` keybind on top.
 
-## Features
+## Player commands
 
-- **Peace/Combat Toggle** — Players press V (rebindable) to switch between Peace mode (PvP off) and Combat mode (PvP on)
-- **HUD Indicator** — Compact icon at the top of the screen shows the player's current mode (position configurable: left/center/right + custom Y offset)
-- **Combat Tagging** — PvP engagement tags both players for a configurable duration (default 30s), preventing mode switching mid-fight. Tag deadlines are stored in game ticks, so they survive server restarts correctly.
-- **Smart Cooldowns** — Cooldown triggers on PvP activity by default (not on toggle). The `cooldownScope` enum lets admins choose which transition direction the cooldown blocks (`PEACE_ONLY` / `COMBAT_ONLY` / `BOTH` / `NONE`).
-- **Nameplate Indicators** — Configurable text prefixes (⚔/☕) and color coding (red/blue) via vanilla scoreboard teams
-- **Damage-Type Denylist** — Block specific PvP vectors (e.g. magic, tridents) without disabling PvP entirely
-- **Persistent State** — Player mode, combat tags, and cooldowns survive logout, death, and server restarts via Forge capability storage
-- **Mod Integration API** — Public `CombatToggleAPI` plus four Forge events (`CombatToggleStateChangeEvent`, `CombatTagAppliedEvent`, `CombatTagExpiredEvent`, `CombatLoggedOutEvent`) for external mods (combat-log penalty mods, safe-zone mods, etc.)
+All four work the same whether you have the mod installed client-side or not.
 
-## Player Commands
+| Command | Effect |
+|---|---|
+| `/ct` | Toggle Combat ↔ Peace mode |
+| `/combat` | Set yourself to Combat mode |
+| `/peace` | Set yourself to Peace mode |
+| `/combattoggle status` | View your mode, tag, and cooldown |
+| `/combattoggle help` | List every command you can run (filtered by permission) |
 
-| Command | Description |
-|---------|-------------|
-| `/combattoggle status` | View your own mode, tag, and cooldown status |
-| `/combattoggle help` | List every subcommand you can run (filtered by your permission level) |
+## Admin commands
 
-## Admin Commands
+Require OP level 2.
 
-All admin commands require OP level 2.
-
-| Command | Description |
-|---------|-------------|
+| Command | Effect |
+|---|---|
 | `/combattoggle get <player>` | View a player's mode and tag status |
-| `/combattoggle set <player> <combat\|peace> [bypass]` | Force-set a player's mode. Tab-completable; `bypass=true` overrides cooldown and the `forceCombatWhileTagged` guard. |
-| `/combattoggle resetcooldown <player>` | Clear a player's cooldown (both toggle and PvP) |
-| `/combattoggle tag <player> [seconds]` | Apply a combat tag (1–3600s; defaults to `combatTagSeconds`) |
+| `/combattoggle set <player> <combat\|peace> [bypass]` | Force-set a player's mode. `bypass=true` overrides cooldown + tag guard. |
+| `/combattoggle resetcooldown <player>` | Clear both toggle and PvP cooldowns |
+| `/combattoggle tag <player> [seconds]` | Apply a combat tag (1–3600s; default = `combatTagSeconds`) |
 | `/combattoggle untag <player>` | Remove a combat tag |
-| `/combattoggle resync` | Refresh scoreboard teams and HUD state for all online players. (`/combattoggle reload` works as an alias.) |
+| `/combattoggle resync` | Refresh scoreboard teams + sync HUD state for everyone online (`/combattoggle reload` is an alias) |
 
-## Configuration
+## HUD (client-side, optional)
 
-Server settings are in `<world>/serverconfig/combattoggle-server.toml` (per-world).
-Client settings are in `config/combattoggle-client.toml` (global, per-client).
+When the mod is installed client-side, a small indicator shows the player's current mode. The HUD never affects gameplay — server logic is authoritative.
 
-### Combat & Tagging
+Configure in `config/combattoggle-client.toml`:
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `combatTagSeconds` | 30 | Combat tag duration after PvP (seconds) |
-| `requireBothCombatEnabled` | true | Both players must be in Combat mode for PvP to occur |
-| `forceCombatWhileTagged` | true | Force Combat mode while tagged; admin `/set peace` is refused unless `bypass=true` |
-| `allowToggleWhileTagged` | false | Allow toggling while combat-tagged |
-| `blockedDamageTypes` | `[]` | List of damage-type resource locations always blocked between players regardless of mode (e.g. `["minecraft:magic", "minecraft:trident"]`) |
+| Key | Default | Notes |
+|---|---|---|
+| `hudEnabled` | `true` | Master switch |
+| `hudShowInCombatMode` | `true` | Display while in Combat |
+| `hudShowInPeaceMode` | `true` | Display while in Peace |
+| `hudAnchor` | `TOP_CENTER` | One of `TOP_LEFT`, `TOP_CENTER`, `TOP_RIGHT`, `CENTER_LEFT`, `CENTER`, `CENTER_RIGHT`, `BOTTOM_LEFT`, `BOTTOM_CENTER`, `BOTTOM_RIGHT`, `CUSTOM` |
+| `hudOffsetX` | `0` | Pixels from anchor (inward). Absolute screen X if `hudAnchor=CUSTOM`. |
+| `hudOffsetY` | `6` | Pixels from anchor (inward). Absolute screen Y if `hudAnchor=CUSTOM`. |
+| `hudScale` | `1.0` | 0.5 – 3.0 |
+| `hudShowTimers` | `true` | Show tag/cooldown countdown text below the icon |
 
-### Cooldown System
+Default keybind is `V`; rebind via Minecraft's Controls menu (Gameplay category).
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `cooldownSeconds` | 600 | Cooldown duration (seconds) |
-| `cooldownTriggersOnToggle` | false | Start cooldown on mode toggle |
-| `cooldownTriggersOnPvp` | true | Start cooldown on PvP damage |
-| `cooldownScope` | `PEACE_ONLY` | Which transition direction the cooldown blocks: `PEACE_ONLY` (Combat→Peace blocked), `COMBAT_ONLY` (Peace→Combat blocked), `BOTH`, or `NONE` (computed but never blocks). |
-| `allowAdminBypassCooldown` | true | Admins can bypass cooldown via commands |
+## Server config
 
-### Nameplate Customization
+Per-world file: `<world>/serverconfig/combattoggle-server.toml`. All keys carry over verbatim from 1.1.0.
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `useScoreboardTeams` | true | Use vanilla scoreboard teams for nameplates (disable to avoid conflicts with other team-management mods) |
-| `useEmojiPrefixes` | true | Show text prefixes on nameplates |
-| `combatEmoji` | `⚔ ` | Prefix for Combat mode players |
-| `peaceEmoji` | `☕ ` | Prefix for Peace mode players |
-| `useNameplateColors` | true | Color nameplates red (Combat) / blue (Peace) |
-| `combatTeamName` | `ct_combat` | Scoreboard team name for Combat |
-| `peaceTeamName` | `ct_peace` | Scoreboard team name for Peace |
+### Combat & tagging
 
-### Client (per-client)
+| Key | Default | Notes |
+|---|---|---|
+| `combatTagSeconds` | `30` | Tag duration after a PvP exchange (0 disables tagging) |
+| `requireBothCombatEnabled` | `true` | Both attacker and victim must be in Combat for PvP to land |
+| `forceCombatWhileTagged` | `true` | Auto-flip a tagged player to Combat |
+| `allowToggleWhileTagged` | `false` | Permit Combat → Peace while tagged |
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `showHud` | true | Display the HUD mode indicator |
-| `showHudTimers` | true | Display the tag and cooldown countdown timers below the indicator |
-| `hudAnchor` | `CENTER` | Horizontal alignment: `LEFT` / `CENTER` / `RIGHT` |
-| `hudYOffset` | 6 | Vertical offset from the top of the screen, in pixels |
+### Cooldowns
 
-## Building from Source
+| Key | Default | Notes |
+|---|---|---|
+| `cooldownSeconds` | `600` | Cooldown duration |
+| `cooldownTriggersOnToggle` | `false` | Start cooldown on a manual toggle |
+| `cooldownTriggersOnPvp` | `true` | Start cooldown on a PvP exchange |
+| `cooldownAppliesToPeaceOnly` | `true` | Cooldown only blocks Combat → Peace; Peace → Combat is always allowed |
+| `allowAdminBypassCooldown` | `true` | `/combattoggle set ... bypass=true` works |
 
-```bash
-git clone https://github.com/otectus/combat-toggle.git
-cd combat-toggle
+### Nameplates
 
-./gradlew build          # Linux/Mac
-.\gradlew.bat build      # Windows
+| Key | Default | Notes |
+|---|---|---|
+| `useScoreboardTeams` | `true` | Disable to avoid conflicts with other team-managing mods |
+| `useEmojiPrefixes` | `true` | |
+| `combatEmoji` | `⚔ ` | BMP-only Unicode (no surrogate pairs) |
+| `peaceEmoji` | `☕ ` | |
+| `useNameplateColors` | `true` | RED for Combat, BLUE for Peace |
+| `combatTeamName` | `ct_combat` | |
+| `peaceTeamName` | `ct_peace` | |
 
-# Output: build/libs/combattoggle-1.2.1.jar
-```
+## Server-side-only deployment
 
-### Development
+The two pieces that make this work:
 
-```bash
-./gradlew genIntellijRuns    # IntelliJ IDEA
-./gradlew genEclipseRuns     # Eclipse
-./gradlew runClient          # Test client
-```
+1. `mods.toml` declares `displayTest = "IGNORE_SERVER_VERSION"`. Vanilla clients see the server as compatible in their multiplayer list (no red ❌).
+2. The network channel uses `NetworkRegistry.acceptMissingOr(PROTOCOL::equals)`. Vanilla clients pass the handshake (no "missing channel" kick); modded clients must match the protocol version exactly.
 
-## Mod Integration
+For players without the mod installed client-side: `/ct`, `/combat`, `/peace`, and `/combattoggle status` are all server-handled commands and work identically.
 
-### Querying state
+## Upgrading from 1.1.x
 
-```java
-import com.runecraft.combattoggle.api.CombatToggleAPI;
-import com.runecraft.combattoggle.data.ToggleDirection;
+This is a breaking release. Most things carry over:
 
-boolean inCombat        = CombatToggleAPI.isInCombatMode(player);
-boolean tagged          = CombatToggleAPI.isCombatTagged(player);
-boolean pvpAllowed      = CombatToggleAPI.isPvpAllowed(attacker, victim);
-long    tagRemainingMs  = CombatToggleAPI.getCombatTagRemainingMs(player);
-long    cooldownMs      = CombatToggleAPI.getCooldownRemainingMs(player);
-boolean blockedToPeace  = CombatToggleAPI.isCooldownActive(player, ToggleDirection.TO_PEACE);
-```
+- Server config keys are unchanged — your `combattoggle-server.toml` from 1.1.x continues to work.
+- Player mode (Combat / Peace) survives the upgrade — your players keep whatever they were last set to.
+- Admin commands still exist, just under the `/combattoggle` namespace.
+- HUD keybind is still `V`.
 
-### Listening to lifecycle events
+What breaks:
 
-Subscribe to any of these on the Forge event bus:
+- **In-flight combat tags and cooldowns from 1.1.x are dropped on first 1.2.0 login.** The 1.1.x persisted timers were wall-clock milliseconds with no clock-source guarantee; converting them to the new game-tick clock is unsafe. Mode flag carries; timers reset.
+- **The `showHud` server config is dropped.** HUD visibility is now purely client-side via `hudEnabled` in `combattoggle-client.toml`. Operator config files keep the orphan key on first read; Forge logs an unused-key warning. Harmless.
+- **Network protocol is `"1"` for the 1.2.x line.** 1.1.x modded clients cannot connect to a 1.2.0 server (handshake rejects); they need to upgrade. Vanilla clients are unaffected.
 
-| Event | When it fires | Cancelable |
-|-------|---------------|------------|
-| `CombatToggleStateChangeEvent` | Before a mode change is persisted (player toggle, admin `set`, or force-combat flip). Carries the target state and a `Reason` enum. | Yes — cancel to refuse the transition (e.g. safe-zone mods forcing Peace). |
-| `CombatTagAppliedEvent` | When a player is freshly tagged or has an existing tag extended. Carries duration and deadline ticks. | No |
-| `CombatTagExpiredEvent` | When a tag elapses, both during normal play and on the player's first login back if it elapsed offline. | No |
-| `CombatLoggedOutEvent` | When a player disconnects. Carries remaining tag ticks; `isCombatLog()` returns true if the player disconnected mid-tag. | No |
-
-```java
-@SubscribeEvent
-public void onTagExpired(CombatTagExpiredEvent e) {
-    // e.getEntity() is the Player whose tag just elapsed
-}
-
-@SubscribeEvent
-public void onCombatLog(CombatLoggedOutEvent e) {
-    if (e.isCombatLog()) {
-        // Apply your combat-log penalty here
-    }
-}
-```
-
-## Project Structure
+## Architecture
 
 ```
 src/main/java/com/runecraft/combattoggle/
-├── CombatToggle.java                       # Mod entry point
-├── api/
-│   ├── CombatToggleAPI.java                # Public API for other mods (state queries)
-│   └── events/
-│       ├── CombatToggleStateChangeEvent.java
-│       ├── CombatTagAppliedEvent.java
-│       ├── CombatTagExpiredEvent.java
-│       └── CombatLoggedOutEvent.java
-├── config/CTConfig.java                    # Configuration definitions (server + client)
-├── data/
-│   ├── CombatToggleData.java               # Player state (capability-backed)
-│   ├── CombatToggleCapability.java         # Capability registration + attach + clone
-│   ├── CooldownScope.java                  # PEACE_ONLY / COMBAT_ONLY / BOTH / NONE
-│   └── ToggleDirection.java                # TO_PEACE / TO_COMBAT
-├── events/
-│   ├── CombatEnforcementEvents.java        # PvP blocking, tagging, force-combat flips
-│   ├── CombatTagTickHandler.java           # Tag-expiration notifications (alloc-free)
-│   ├── PlayerLifecycleEvents.java          # Login/respawn/logout state sync + legacy migration
-│   └── CommandEvents.java                  # Admin + player commands
-├── network/
-│   ├── PacketHandler.java                  # Network channel setup (protocol v3)
-│   ├── C2SRequestTogglePacket.java         # Client-to-server toggle request
-│   └── S2CSyncStatePacket.java             # Server-to-client state sync (varint encoded)
-├── client/
-│   ├── ClientCombatState.java              # Client-side state cache + connect/disconnect reset
-│   ├── ClientKeybinds.java                 # Keybind registration (gated by mc.screen == null)
-│   └── CombatHudOverlay.java               # HUD rendering (config-driven layout, cached strings)
-└── util/
-    ├── TextUtil.java                       # Chat message formatting
-    └── TeamManager.java                    # Scoreboard team management (cached on config reload)
+├── CombatToggle.java                          # @Mod entry; dedicated-server safe
+├── common/                                    # universally loadable (server, integrated, client)
+│   ├── CTConfig.java                          # SERVER_SPEC + CLIENT_SPEC
+│   ├── HudAnchor.java                         # enum, pure POJO
+│   ├── data/
+│   │   ├── CombatToggleData.java              # capability state; tick-based timers
+│   │   └── CombatToggleCapability.java        # registration + attach + clone
+│   └── network/
+│       ├── PacketHandler.java                 # SimpleChannel; vanilla-tolerant handshake
+│       ├── C2SRequestTogglePacket.java        # client → server (modded keybind path)
+│       └── S2CSyncStatePacket.java            # server → client (best-effort)
+├── server/                                    # gameplay logic; no client-class refs
+│   ├── CommandRegistry.java                   # /ct, /combat, /peace, /combattoggle
+│   ├── ToggleService.java                     # central toggle business logic
+│   ├── PlayerLifecycleEvents.java             # login/respawn/logout + 1.1.x migration
+│   ├── CombatEnforcementEvents.java           # LivingAttackEvent + LivingHurtEvent
+│   ├── TeamManager.java                       # scoreboard teams
+│   └── TextHelper.java                        # shared chat formatting
+└── client/                                    # only loaded on physical client
+    ├── ClientCombatState.java                 # cached state + connect/disconnect reset
+    ├── ClientKeybinds.java                    # V keybind + tick handler
+    └── CombatHudOverlay.java                  # IGuiOverlay impl; anchor-aware positioning
 ```
 
-## Known Issues
+## Known limitations
 
-- May conflict with mods that heavily manage scoreboard teams (factions mods, etc.) — set `useScoreboardTeams=false` to disable Combat Toggle's team usage.
-- Cross-server HUD state was previously sticky between disconnect and reconnect; fixed in 1.2.1 by zeroing client state on connect/disconnect.
+- **`/combat` and `/peace` collision.** These root literals are shared namespaces. If another mod or plugin registers the same name, behavior depends on registration order. Fall back to `/ct` and `/combattoggle <subcmd>` if needed.
+- **Vanilla clients have no HUD or keybind.** Use `/ct` exclusively. By design.
+- **No public API for other mods.** State lives on a Forge capability so a future minor version can add an API without re-architecting; nothing exposed today.
 
 ## License
 
@@ -201,4 +159,4 @@ src/main/java/com/runecraft/combattoggle/
 
 ## Credits
 
-Developed by Runecraft
+Developed by Runecraft. Original 1.1.0 port to 1.20.1 served as a structural reference.

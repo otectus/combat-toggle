@@ -1,4 +1,4 @@
-package com.runecraft.combattoggle.data;
+package com.runecraft.combattoggle.common.data;
 
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -21,14 +21,10 @@ import org.jetbrains.annotations.Nullable;
 import static com.runecraft.combattoggle.CombatToggle.MODID;
 
 /**
- * Forge capability that hosts {@link CombatToggleData} on every {@link Player} entity.
- *
- * <p>The capability is attached at entity-construction time via {@link AttachCapabilitiesEvent}
- * and survives logout/login automatically (vanilla persists capability NBT in level.dat / playerdata).
- * On respawn, {@link PlayerEvent.Clone} fires; we copy the old player's capability state into the new one
- * so death does not wipe Combat Toggle state.
- *
- * <p>Replaces the pre-1.2.0 pattern of reading and rewriting a {@code combat_toggle} compound on every call.
+ * Forge capability that hosts {@link CombatToggleData} on every {@link Player} entity. The capability
+ * is attached at entity-construction time and survives logout/login automatically (vanilla persists
+ * capability NBT in {@code playerdata/<uuid>.dat}). On respawn, {@link PlayerEvent.Clone} fires; we
+ * copy the old player's data into the new one so death does not wipe Combat Toggle state.
  */
 public final class CombatToggleCapability {
 
@@ -39,10 +35,6 @@ public final class CombatToggleCapability {
 
     private CombatToggleCapability() {}
 
-    /**
-     * Mod-bus subscriber: registers the capability class with Forge during mod setup.
-     * Without this, {@code AttachCapabilitiesEvent.addCapability} silently fails to resolve.
-     */
     @Mod.EventBusSubscriber(modid = MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
     public static final class ModBus {
         @SubscribeEvent
@@ -51,9 +43,6 @@ public final class CombatToggleCapability {
         }
     }
 
-    /**
-     * Forge-bus subscriber: attaches the capability to every Player and propagates state across clone.
-     */
     @Mod.EventBusSubscriber(modid = MODID)
     public static final class ForgeBus {
         @SubscribeEvent
@@ -66,7 +55,7 @@ public final class CombatToggleCapability {
         public static void onClone(PlayerEvent.Clone event) {
             Player oldPlayer = event.getOriginal();
             Player newPlayer = event.getEntity();
-            // Caps on the original player are invalidated immediately after death; revive briefly to read them.
+            // Caps on the original are invalidated immediately after death; revive briefly to read them.
             oldPlayer.reviveCaps();
             try {
                 oldPlayer.getCapability(CAPABILITY).ifPresent(oldData ->
@@ -78,7 +67,6 @@ public final class CombatToggleCapability {
         }
     }
 
-    /** Lazily-served, NBT-serializable wrapper around a single {@link CombatToggleData} instance. */
     private static final class Provider implements ICapabilityProvider, INBTSerializable<CompoundTag> {
         private final CombatToggleData instance = new CombatToggleData();
         private final LazyOptional<CombatToggleData> handle = LazyOptional.of(() -> instance);

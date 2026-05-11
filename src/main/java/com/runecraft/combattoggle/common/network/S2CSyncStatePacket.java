@@ -1,6 +1,5 @@
-package com.runecraft.combattoggle.network;
+package com.runecraft.combattoggle.common.network;
 
-import com.runecraft.combattoggle.client.ClientCombatState;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
 
@@ -9,9 +8,14 @@ import java.util.function.Supplier;
 /**
  * Server-to-client state sync. Carries the player's mode plus countdown remainders for the HUD.
  *
- * <p>Wire format (protocol v3): {@code boolean enabled | varint tagRemainingSec | varint cooldownRemainingSec}.
- * The HUD only renders mm:ss, so sub-second precision is wasted. Two varints (typically 2 bytes each for
- * sub-hour deadlines) plus the boolean total ~5 bytes — down from the 17 bytes the v2 packet used.
+ * <p>Wire format: {@code boolean enabled | varInt tagRemainingSec | varInt cooldownRemainingSec}.
+ * The HUD only displays mm:ss, so sub-second precision is wasted. ~5 bytes total.
+ *
+ * <p>Side-safety: the {@link #handle} method references {@code ClientCombatState} only inside the
+ * {@code enqueueWork} lambda body. The JVM does not load that class until the lambda actually
+ * executes — and S2C lambdas only fire on the physical client. Dedicated servers register this
+ * packet for encoding (to send) but never run the handler, so {@code ClientCombatState} stays
+ * unloaded there.
  */
 public final class S2CSyncStatePacket {
     public final boolean enabled;
@@ -39,7 +43,9 @@ public final class S2CSyncStatePacket {
 
     public static void handle(S2CSyncStatePacket msg, Supplier<NetworkEvent.Context> ctx) {
         NetworkEvent.Context c = ctx.get();
-        c.enqueueWork(() -> ClientCombatState.update(msg.enabled, msg.combatTagRemainingMs, msg.cooldownRemainingMs));
+        c.enqueueWork(() ->
+                com.runecraft.combattoggle.client.ClientCombatState.update(
+                        msg.enabled, msg.combatTagRemainingMs, msg.cooldownRemainingMs));
         c.setPacketHandled(true);
     }
 
@@ -47,7 +53,6 @@ public final class S2CSyncStatePacket {
     private static int msToSecondsCeil(long ms) {
         if (ms <= 0L) return 0;
         long sec = (ms + 999L) / 1000L;
-        // VarInt is 32-bit; clamp the absurd case (would only happen if config is set to ~68 years).
         return sec > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) sec;
     }
 }

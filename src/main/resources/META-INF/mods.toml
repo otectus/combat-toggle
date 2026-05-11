@@ -1,28 +1,27 @@
 modLoader="javafml"
-loaderVersion="[47,)"
+loaderVersion="[43,)"
 license="GPL-3.0"
+issueTrackerURL=""
 
 [[mods]]
 modId="combattoggle"
-version="1.2.1"
+version="1.2.0"
 displayName="Combat Toggle"
-description="A PvP mode toggle system with combat tagging and cooldowns"
-logoFile=""
+description="A PvP mode toggle system with combat tagging and cooldowns. Server-installable; vanilla clients can join and use the /ct command."
+displayTest="IGNORE_SERVER_VERSION"
 credits="Runecraft"
 authors="Runecraft"
-displayURL=""
-updateJSONURL=""
 
 [[dependencies.combattoggle]]
 modId="forge"
 mandatory=true
-versionRange="[47.3.0,)"
+versionRange="[43.0.0,)"
 ordering="NONE"
 side="BOTH"
 
 [[dependencies.combattoggle]]
 modId="minecraft"
 mandatory=true
-versionRange="[1.20.1,1.21)"
+versionRange="[1.19.2,1.20)"
 ordering="NONE"
 side="BOTH"
